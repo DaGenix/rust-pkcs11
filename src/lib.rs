@@ -15,6 +15,7 @@
 
 extern crate libloading;
 extern crate num_bigint;
+extern crate libc;
 
 #[cfg(test)]
 mod tests;

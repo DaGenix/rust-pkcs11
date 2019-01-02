@@ -37,6 +37,7 @@ use std::mem;
 use std::slice;
 use std::ptr;
 use num_bigint::BigUint;
+use libc;
 
 use functions::*;
 use super::CkFrom;
@@ -46,7 +47,7 @@ pub const CK_TRUE: CK_BBOOL = 1;
 pub const CK_FALSE: CK_BBOOL = 0;
 
 //// an unsigned 8-bit value
-pub type CK_BYTE = u8;
+pub type CK_BYTE = libc::c_uchar;
 pub type CK_BYTE_PTR = *const CK_BYTE;
 
 /// an unsigned 8-bit character
@@ -61,17 +62,11 @@ pub type CK_UTF8CHAR_PTR = *const CK_UTF8CHAR;
 pub type CK_BBOOL = CK_BYTE;
 
 /// an unsigned value, at least 32 bits long
-#[cfg(windows)]
-pub type CK_ULONG = u32;
-#[cfg(not(windows))]
-pub type CK_ULONG = usize;
+pub type CK_ULONG = libc::c_ulong;
 pub type CK_ULONG_PTR = *const CK_ULONG;
 
 /// a signed value, the same size as a CK_ULONG
-#[cfg(windows)]
-pub type CK_LONG = i32;
-#[cfg(not(windows))]
-pub type CK_LONG = isize;
+pub type CK_LONG = libc::c_long;
 
 
 /// at least 32 bits; each bit is a Boolean flag
