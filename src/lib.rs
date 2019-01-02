@@ -616,7 +616,7 @@ impl Ctx {
     }
   }
 
-  pub fn get_attribute_value(&self, session: CK_SESSION_HANDLE, object: CK_OBJECT_HANDLE, template: &mut Vec<CK_ATTRIBUTE<'_>>) -> Result<CK_RV, Error> {
+  pub fn get_attribute_value(&self, session: CK_SESSION_HANDLE, object: CK_OBJECT_HANDLE, template: &mut Vec<CK_ATTRIBUTE_MUT<'_>>) -> Result<CK_RV, Error> {
     self.initialized()?;
     /*
       Note that the error codes CKR_ATTRIBUTE_SENSITIVE, CKR_ATTRIBUTE_TYPE_INVALID, and CKR_BUFFER_TOO_SMALL
@@ -625,7 +625,7 @@ impl Ctx {
       C_GetAttributeValue.  Each attribute in the template whose value can be returned by the call to
       C_GetAttributeValue will be returned by the call to C_GetAttributeValue.
     */
-    match (self.C_GetAttributeValue)(session, object, template.as_slice().as_ptr(), template.len() as CK_ULONG) {
+    match (self.C_GetAttributeValue)(session, object, template.as_mut_slice().as_mut_ptr(), template.len() as CK_ULONG) {
       CKR_OK => Ok(CKR_OK),
       CKR_ATTRIBUTE_SENSITIVE => Ok(CKR_ATTRIBUTE_SENSITIVE),
       CKR_ATTRIBUTE_TYPE_INVALID => Ok(CKR_ATTRIBUTE_TYPE_INVALID),

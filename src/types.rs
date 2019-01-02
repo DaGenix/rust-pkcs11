@@ -675,7 +675,7 @@ impl <'a> CK_ATTRIBUTE<'a>  {
     }
   }
 
-  pub fn with_bool<'b>(self, b: &'b mut CK_BBOOL) -> CK_ATTRIBUTE<'b> {
+  pub fn with_bool<'b>(self, b: &'b CK_BBOOL) -> CK_ATTRIBUTE<'b> {
     CK_ATTRIBUTE {
       attrType: self.attrType,
       pValue: b as *const _ as CK_VOID_PTR,
@@ -684,7 +684,7 @@ impl <'a> CK_ATTRIBUTE<'a>  {
     }
   }
 
-  pub fn with_ck_ulong<'b>(self, val: &'b mut CK_ULONG) -> CK_ATTRIBUTE<'b> {
+  pub fn with_ck_ulong<'b>(self, val: &'b CK_ULONG) -> CK_ATTRIBUTE<'b> {
     CK_ATTRIBUTE {
       attrType: self.attrType,
       pValue: val as *const _ as CK_VOID_PTR,
@@ -693,7 +693,7 @@ impl <'a> CK_ATTRIBUTE<'a>  {
     }
   }
 
-  pub fn with_ck_long<'b>(self, val: &'b mut CK_LONG) -> CK_ATTRIBUTE<'b> {
+  pub fn with_ck_long<'b>(self, val: &'b CK_LONG) -> CK_ATTRIBUTE<'b> {
     CK_ATTRIBUTE {
       attrType: self.attrType,
       pValue: val as *const _ as CK_VOID_PTR,
@@ -702,7 +702,7 @@ impl <'a> CK_ATTRIBUTE<'a>  {
     }
   }
 
-  pub fn with_bytes<'b>(self, val: &'b mut [CK_BYTE]) -> CK_ATTRIBUTE<'b> {
+  pub fn with_bytes<'b>(self, val: &'b [CK_BYTE]) -> CK_ATTRIBUTE<'b> {
     CK_ATTRIBUTE {
       attrType: self.attrType,
       pValue: val as *const _ as CK_VOID_PTR,
@@ -711,7 +711,7 @@ impl <'a> CK_ATTRIBUTE<'a>  {
     }
   }
 
-  pub fn with_date<'b>(self, date: &'b mut CK_DATE) -> CK_ATTRIBUTE<'b> {
+  pub fn with_date<'b>(self, date: &'b CK_DATE) -> CK_ATTRIBUTE<'b> {
     CK_ATTRIBUTE {
       attrType: self.attrType,
       pValue: date as *const _ as CK_VOID_PTR,
@@ -719,39 +719,103 @@ impl <'a> CK_ATTRIBUTE<'a>  {
       phantom: PhantomData,
     }
   }
-
-  // this works for C structs and primitives, but not for vectors, slices, strings
-  //pub fn set_ptr<T>(&mut self, val: &T) {
-  //  self.pValue = (val as *const T) as CK_VOID_PTR;
-  //}
 }
 
-//trait CkAttributeFrom<T> {
-//    fn from_ck(T, CK_ATTRIBUTE_TYPE) -> Self;
-//}
-//
-//trait CkAttributeInto<T> {
-//    fn into_attribute(self, CK_ATTRIBUTE_TYPE) -> CK_ATTRIBUTE;
-//}
-//
-//impl<T> CkAttributeInto<T> for T where CK_ATTRIBUTE: CkAttributeFrom<T> {
-//    fn into_attribute(self, attrType: CK_ATTRIBUTE_TYPE) -> CK_ATTRIBUTE {
-//        CkAttributeFrom::from_ck(self, attrType)
-//    }
-//}
-//
-//impl CkAttributeFrom<bool> for CK_ATTRIBUTE {
-//    fn from_ck(b: bool, attrType: CK_ATTRIBUTE_TYPE) -> CK_ATTRIBUTE {
-//        let val: CK_BBOOL = if b { 1 } else { 0 };
-//        let ret = Self {
-//            attrType: attrType,
-//            pValue: &val as *const u8 as *const CK_VOID,
-//            ulValueLen: 1,
-//        };
-//        println!("{:?}", ret);
-//        ret
-//    }
-//}
+/// CK_ATTRIBUTE_MUT is a structure that includes the type, length
+/// and value of an attribute
+cryptoki_aligned! {
+  #[derive(Copy)]
+  pub struct CK_ATTRIBUTE_MUT<'a> {
+    pub attrType: CK_ATTRIBUTE_TYPE,
+    pub pValue: CK_VOID_PTR,
+    /// in bytes
+    pub ulValueLen: CK_ULONG,
+    phantom: PhantomData<&'a CK_VOID_PTR>,
+  }
+}
+impl <'a> Clone for CK_ATTRIBUTE_MUT<'a> { fn clone(&self) -> CK_ATTRIBUTE_MUT<'a> { *self } }
+
+pub type CK_ATTRIBUTE_MUT_PTR<'a> = *mut CK_ATTRIBUTE_MUT<'a>;
+
+impl Default for CK_ATTRIBUTE_MUT<'static> {
+  fn default() -> Self {
+    Self {
+      attrType: CKA_VENDOR_DEFINED,
+      pValue: ptr::null(),
+      ulValueLen: 0,
+      phantom: PhantomData,
+    }
+  }
+}
+
+impl <'a> std::fmt::Debug for CK_ATTRIBUTE_MUT<'a> {
+  fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    let attrType = format!("0x{:x}", self.attrType);
+    let data = unsafe { slice::from_raw_parts(self.pValue as *const u8, self.ulValueLen as usize) };
+    fmt
+      .debug_struct("CK_ATTRIBUTE")
+      .field("attrType", &attrType)
+      .field("pValue", &data)
+      .field("ulValueLen", &self.ulValueLen)
+      .finish()
+  }
+}
+
+impl <'a> CK_ATTRIBUTE_MUT<'a>  {
+  pub fn new(attrType: CK_ATTRIBUTE_TYPE) -> CK_ATTRIBUTE_MUT<'static> {
+    CK_ATTRIBUTE_MUT {
+      attrType: attrType,
+      pValue: ptr::null(),
+      ulValueLen: 0,
+      phantom: PhantomData,
+    }
+  }
+
+  pub fn with_bool<'b>(self, b: &'b mut CK_BBOOL) -> CK_ATTRIBUTE_MUT<'b> {
+    CK_ATTRIBUTE_MUT {
+      attrType: self.attrType,
+      pValue: b as *mut _ as CK_VOID_PTR,
+      ulValueLen: std::mem::size_of::<CK_BBOOL>() as CK_ULONG,
+      phantom: PhantomData,
+    }
+  }
+
+  pub fn with_ck_ulong<'b>(self, val: &'b mut CK_ULONG) -> CK_ATTRIBUTE_MUT<'b> {
+    CK_ATTRIBUTE_MUT {
+      attrType: self.attrType,
+      pValue: val as *mut _ as CK_VOID_PTR,
+      ulValueLen: std::mem::size_of::<CK_ULONG>() as CK_ULONG,
+      phantom: PhantomData,
+    }
+  }
+
+  pub fn with_ck_long<'b>(self, val: &'b mut CK_LONG) -> CK_ATTRIBUTE_MUT<'b> {
+    CK_ATTRIBUTE_MUT {
+      attrType: self.attrType,
+      pValue: val as *mut _ as CK_VOID_PTR,
+      ulValueLen: std::mem::size_of::<CK_LONG>() as CK_ULONG,
+      phantom: PhantomData,
+    }
+  }
+
+  pub fn with_bytes<'b>(self, val: &'b mut [CK_BYTE]) -> CK_ATTRIBUTE_MUT<'b> {
+    CK_ATTRIBUTE_MUT {
+      attrType: self.attrType,
+      pValue: val as *mut _ as CK_VOID_PTR,
+      ulValueLen: val.len() as CK_ULONG,
+      phantom: PhantomData,
+    }
+  }
+
+  pub fn with_date<'b>(self, date: &'b mut CK_DATE) -> CK_ATTRIBUTE_MUT<'b> {
+    CK_ATTRIBUTE_MUT {
+      attrType: self.attrType,
+      pValue: date as *mut _ as CK_VOID_PTR,
+      ulValueLen: mem::size_of::<CK_DATE>() as CK_ULONG,
+      phantom: PhantomData,
+    }
+  }
+}
 
 /// CK_DATE is a structure that defines a date
 cryptoki_aligned! {

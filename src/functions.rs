@@ -262,7 +262,7 @@ pub type C_GetObjectSize = extern "C" fn(hSession: CK_SESSION_HANDLE, hObject: C
 /// * `pTemplate`: specifies attrs; gets vals
 /// * `ulCount`: attributes in template
 ///
-pub type C_GetAttributeValue = extern "C" fn(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HANDLE, pTemplate: CK_ATTRIBUTE_PTR, ulCount: CK_ULONG) -> CK_RV;
+pub type C_GetAttributeValue = extern "C" fn(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HANDLE, pTemplate: CK_ATTRIBUTE_MUT_PTR, ulCount: CK_ULONG) -> CK_RV;
 
 /// `C_SetAttributeValue` modifies the value of one or more object attributes.
 ///
