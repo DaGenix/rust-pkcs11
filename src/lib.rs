@@ -158,7 +158,7 @@ impl Ctx {
   pub fn new(filename: &str) -> Result<Ctx, Error> {
     unsafe {
       let lib = libloading::Library::new(filename)?;
-      let mut list: CK_FUNCTION_LIST_PTR = mem::uninitialized();
+      let mut list: CK_FUNCTION_LIST_PTR = ptr::null();
       {
         let func: libloading::Symbol<unsafe extern "C" fn(CK_FUNCTION_LIST_PTR_PTR) -> CK_RV> = lib.get(b"C_GetFunctionList")?;
         match func(&mut list) {
@@ -307,7 +307,7 @@ impl Ctx {
   }
 
   pub fn get_function_list(&self) -> Result<CK_FUNCTION_LIST, Error> {
-    let list: CK_FUNCTION_LIST_PTR = unsafe { mem::uninitialized() };
+    let list: CK_FUNCTION_LIST_PTR = ptr::null();
     match (self.C_GetFunctionList)(&list) {
       CKR_OK => unsafe { Ok((*list).clone()) },
       err => Err(Error::Pkcs11(err)),
