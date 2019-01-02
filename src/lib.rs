@@ -156,17 +156,17 @@ pub struct Ctx {
 
 impl Ctx {
   pub fn new(filename: &str) -> Result<Ctx, Error> {
-    unsafe {
-      let lib = libloading::Library::new(filename)?;
-      let mut list: CK_FUNCTION_LIST_PTR = ptr::null();
-      {
-        let func: libloading::Symbol<unsafe extern "C" fn(CK_FUNCTION_LIST_PTR_PTR) -> CK_RV> = lib.get(b"C_GetFunctionList")?;
-        match func(&mut list) {
-          CKR_OK => (),
-          err => return Err(Error::Pkcs11(err)),
-        }
+    let lib = libloading::Library::new(filename)?;
+    let mut list: CK_FUNCTION_LIST_PTR = ptr::null();
+    {
+      let func: libloading::Symbol<unsafe extern "C" fn(CK_FUNCTION_LIST_PTR_PTR) -> CK_RV> = unsafe { lib.get(b"C_GetFunctionList")? };
+      match unsafe { func(&mut list) } {
+        CKR_OK => (),
+        err => return Err(Error::Pkcs11(err)),
       }
+    }
 
+    unsafe {
       Ok(Ctx {
         lib: lib,
         _is_initialized: false,
