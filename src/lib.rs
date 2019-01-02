@@ -33,6 +33,7 @@ use errors::Error;
 
 
 use std::mem;
+use std::fmt;
 use std::ptr;
 use std::ffi::CString;
 //use libc::c_uchar;
@@ -79,7 +80,6 @@ fn label_from_str(label: &str) -> [CK_UTF8CHAR; 32] {
   lab
 }
 
-#[derive(Debug)]
 pub struct Ctx {
   lib: libloading::Library,
   _is_initialized: bool,
@@ -153,6 +153,12 @@ pub struct Ctx {
   C_CancelFunction: C_CancelFunction,
   // Functions added in for Cryptoki Version 2.01 or later
   C_WaitForSlotEvent: Option<C_WaitForSlotEvent>,
+}
+
+impl fmt::Debug for Ctx {
+  fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    write!(fmt, "Ctx")
+  }
 }
 
 impl Ctx {
@@ -610,7 +616,7 @@ impl Ctx {
     }
   }
 
-  pub fn get_attribute_value<'a>(&self, session: CK_SESSION_HANDLE, object: CK_OBJECT_HANDLE, template: &'a Vec<CK_ATTRIBUTE>) -> Result<(CK_RV, &'a Vec<CK_ATTRIBUTE>), Error> {
+  pub fn get_attribute_value(&self, session: CK_SESSION_HANDLE, object: CK_OBJECT_HANDLE, template: &mut Vec<CK_ATTRIBUTE<'_>>) -> Result<CK_RV, Error> {
     self.initialized()?;
     /*
       Note that the error codes CKR_ATTRIBUTE_SENSITIVE, CKR_ATTRIBUTE_TYPE_INVALID, and CKR_BUFFER_TOO_SMALL
@@ -620,10 +626,10 @@ impl Ctx {
       C_GetAttributeValue will be returned by the call to C_GetAttributeValue.
     */
     match (self.C_GetAttributeValue)(session, object, template.as_slice().as_ptr(), template.len() as CK_ULONG) {
-      CKR_OK => Ok((CKR_OK, template)),
-      CKR_ATTRIBUTE_SENSITIVE => Ok((CKR_ATTRIBUTE_SENSITIVE, template)),
-      CKR_ATTRIBUTE_TYPE_INVALID => Ok((CKR_ATTRIBUTE_TYPE_INVALID, template)),
-      CKR_BUFFER_TOO_SMALL => Ok((CKR_BUFFER_TOO_SMALL, template)),
+      CKR_OK => Ok(CKR_OK),
+      CKR_ATTRIBUTE_SENSITIVE => Ok(CKR_ATTRIBUTE_SENSITIVE),
+      CKR_ATTRIBUTE_TYPE_INVALID => Ok(CKR_ATTRIBUTE_TYPE_INVALID),
+      CKR_BUFFER_TOO_SMALL => Ok(CKR_BUFFER_TOO_SMALL),
       err => Err(Error::Pkcs11(err)),
     }
   }

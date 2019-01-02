@@ -33,6 +33,8 @@ macro_rules! cryptoki_aligned {
 }
 
 use std;
+use std::fmt;
+use std::marker::PhantomData;
 use std::mem;
 use std::slice;
 use std::ptr;
@@ -627,28 +629,30 @@ pub const CKA_VENDOR_DEFINED: CK_ATTRIBUTE_TYPE = 0x80000000;
 /// and value of an attribute
 cryptoki_aligned! {
   #[derive(Copy)]
-  pub struct CK_ATTRIBUTE {
+  pub struct CK_ATTRIBUTE<'a> {
     pub attrType: CK_ATTRIBUTE_TYPE,
     pub pValue: CK_VOID_PTR,
     /// in bytes
     pub ulValueLen: CK_ULONG,
+    phantom: PhantomData<&'a CK_VOID_PTR>,
   }
 }
-packed_clone!(CK_ATTRIBUTE);
+impl <'a> Clone for CK_ATTRIBUTE<'a> { fn clone(&self) -> CK_ATTRIBUTE<'a> { *self } }
 
-pub type CK_ATTRIBUTE_PTR = *const CK_ATTRIBUTE;
+pub type CK_ATTRIBUTE_PTR<'a> = *const CK_ATTRIBUTE<'a>;
 
-impl Default for CK_ATTRIBUTE {
+impl Default for CK_ATTRIBUTE<'static> {
   fn default() -> Self {
     Self {
       attrType: CKA_VENDOR_DEFINED,
       pValue: ptr::null(),
       ulValueLen: 0,
+      phantom: PhantomData,
     }
   }
 }
 
-impl std::fmt::Debug for CK_ATTRIBUTE {
+impl <'a> std::fmt::Debug for CK_ATTRIBUTE<'a> {
   fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
     let attrType = format!("0x{:x}", self.attrType);
     let data = unsafe { slice::from_raw_parts(self.pValue as *const u8, self.ulValueLen as usize) };
@@ -661,136 +665,59 @@ impl std::fmt::Debug for CK_ATTRIBUTE {
   }
 }
 
-impl CK_ATTRIBUTE {
-  pub fn new(attrType: CK_ATTRIBUTE_TYPE) -> Self {
-    Self {
+impl <'a> CK_ATTRIBUTE<'a>  {
+  pub fn new(attrType: CK_ATTRIBUTE_TYPE) -> CK_ATTRIBUTE<'static> {
+    CK_ATTRIBUTE {
       attrType: attrType,
       pValue: ptr::null(),
       ulValueLen: 0,
+      phantom: PhantomData,
     }
   }
 
-  pub fn with_bool(mut self, b: &CK_BBOOL) -> Self {
-    self.pValue = b as *const CK_BBOOL as CK_VOID_PTR;
-    self.ulValueLen = 1;
-    self
-  }
-
-  pub fn set_bool(&mut self, b: &CK_BBOOL) {
-    self.pValue = b as *const CK_BBOOL as CK_VOID_PTR;
-    if self.ulValueLen == 0 {
-      self.ulValueLen = 1;
+  pub fn with_bool<'b>(self, b: &'b mut CK_BBOOL) -> CK_ATTRIBUTE<'b> {
+    CK_ATTRIBUTE {
+      attrType: self.attrType,
+      pValue: b as *const _ as CK_VOID_PTR,
+      ulValueLen: std::mem::size_of::<CK_BBOOL>() as CK_ULONG,
+      phantom: PhantomData,
     }
   }
 
-  pub fn get_bool(&self) -> bool {
-    let data: CK_BBOOL = unsafe { mem::transmute_copy(&*self.pValue) };
-    CkFrom::from(data)
-  }
-
-  pub fn with_ck_ulong(mut self, val: &CK_ULONG) -> Self {
-    self.pValue = val as *const _ as CK_VOID_PTR;
-    self.ulValueLen = std::mem::size_of::<CK_ULONG>() as CK_ULONG;
-    self
-  }
-
-  pub fn set_ck_ulong(&mut self, val: &CK_ULONG) {
-    self.pValue = val as *const _ as CK_VOID_PTR;
-    if self.ulValueLen == 0 {
-      self.ulValueLen = std::mem::size_of::<CK_ULONG>() as CK_ULONG;
+  pub fn with_ck_ulong<'b>(self, val: &'b mut CK_ULONG) -> CK_ATTRIBUTE<'b> {
+    CK_ATTRIBUTE {
+      attrType: self.attrType,
+      pValue: val as *const _ as CK_VOID_PTR,
+      ulValueLen: std::mem::size_of::<CK_ULONG>() as CK_ULONG,
+      phantom: PhantomData,
     }
   }
 
-  pub fn get_ck_ulong(&self) -> CK_ULONG {
-    unsafe { mem::transmute_copy(&*self.pValue) }
-  }
-
-  pub fn with_ck_long(mut self, val: &CK_LONG) -> Self {
-    self.pValue = val as *const _ as CK_VOID_PTR;
-    self.ulValueLen = std::mem::size_of::<CK_LONG>() as CK_ULONG;
-    self
-  }
-
-  pub fn set_ck_long(&mut self, val: &CK_LONG) {
-    self.pValue = val as *const _ as CK_VOID_PTR;
-    if self.ulValueLen == 0 {
-      self.ulValueLen = std::mem::size_of::<CK_LONG>() as CK_ULONG;
+  pub fn with_ck_long<'b>(self, val: &'b mut CK_LONG) -> CK_ATTRIBUTE<'b> {
+    CK_ATTRIBUTE {
+      attrType: self.attrType,
+      pValue: val as *const _ as CK_VOID_PTR,
+      ulValueLen: std::mem::size_of::<CK_LONG>() as CK_ULONG,
+      phantom: PhantomData,
     }
   }
 
-  pub fn get_ck_long(&self) -> CK_LONG {
-    unsafe { mem::transmute_copy(&*self.pValue) }
-  }
-
-  pub fn with_biginteger(mut self, val: &Vec<u8>) -> Self {
-    self.pValue = val.as_slice().as_ptr() as CK_VOID_PTR;
-    self.ulValueLen = val.len() as CK_ULONG;
-    self
-  }
-
-  pub fn set_biginteger(&mut self, val: &Vec<u8>) {
-    self.pValue = val.as_slice().as_ptr() as CK_VOID_PTR;
-    if self.ulValueLen == 0 {
-      self.ulValueLen = val.len() as CK_ULONG;
+  pub fn with_bytes<'b>(self, val: &'b mut [CK_BYTE]) -> CK_ATTRIBUTE<'b> {
+    CK_ATTRIBUTE {
+      attrType: self.attrType,
+      pValue: val as *const _ as CK_VOID_PTR,
+      ulValueLen: val.len() as CK_ULONG,
+      phantom: PhantomData,
     }
   }
 
-  pub fn get_biginteger(&self) -> BigUint {
-    let slice = unsafe { slice::from_raw_parts(self.pValue as CK_BYTE_PTR, self.ulValueLen as usize) };
-    BigUint::from_bytes_le(slice)
-  }
-
-  pub fn with_bytes(mut self, val: &[CK_BYTE]) -> Self {
-    self.pValue = val.as_ptr() as CK_VOID_PTR;
-    self.ulValueLen = val.len() as CK_ULONG;
-    self
-  }
-
-  pub fn set_bytes(&mut self, val: &[CK_BYTE]) {
-    self.pValue = val.as_ptr() as CK_VOID_PTR;
-    if self.ulValueLen == 0 {
-      self.ulValueLen = val.len() as CK_ULONG;
+  pub fn with_date<'b>(self, date: &'b mut CK_DATE) -> CK_ATTRIBUTE<'b> {
+    CK_ATTRIBUTE {
+      attrType: self.attrType,
+      pValue: date as *const _ as CK_VOID_PTR,
+      ulValueLen: mem::size_of::<CK_DATE>() as CK_ULONG,
+      phantom: PhantomData,
     }
-  }
-
-  pub fn get_bytes(&self) -> Vec<CK_BYTE> {
-    let slice = unsafe { slice::from_raw_parts(self.pValue as CK_BYTE_PTR, self.ulValueLen as usize) };
-    Vec::from(slice).clone()
-  }
-
-  pub fn with_string(mut self, str: &String) -> Self {
-    self.pValue = str.as_ptr() as CK_VOID_PTR;
-    self.ulValueLen = str.len() as CK_ULONG;
-    self
-  }
-
-  pub fn set_string(&mut self, str: &String) {
-    self.pValue = str.as_ptr() as CK_VOID_PTR;
-    if self.ulValueLen == 0 {
-      self.ulValueLen = str.len() as CK_ULONG;
-    }
-  }
-
-  pub fn get_string(&self) -> String {
-    let slice = unsafe { slice::from_raw_parts(self.pValue as CK_BYTE_PTR, self.ulValueLen as usize) };
-    String::from_utf8_lossy(slice).into_owned().clone()
-  }
-
-  pub fn with_date(mut self, date: &CK_DATE) -> Self {
-    self.pValue = (date as *const CK_DATE) as CK_VOID_PTR;
-    self.ulValueLen = mem::size_of::<CK_DATE>() as CK_ULONG;
-    self
-  }
-
-  pub fn set_date(&mut self, date: &CK_DATE) {
-    self.pValue = (date as *const CK_DATE) as CK_VOID_PTR;
-    if self.ulValueLen == 0 {
-      self.ulValueLen = mem::size_of::<CK_DATE>() as CK_ULONG;
-    }
-  }
-
-  pub fn get_date(&self) -> CK_DATE {
-    unsafe { mem::transmute_copy(&*self.pValue) }
   }
 
   // this works for C structs and primitives, but not for vectors, slices, strings
@@ -1404,7 +1331,7 @@ pub type CK_NOTIFY = Option<extern "C" fn(CK_SESSION_HANDLE, CK_NOTIFICATION, CK
 /// version and pointers of appropriate types to all the
 /// Cryptoki functions
 cryptoki_aligned! {
-  #[derive(Debug, Copy)]
+  #[derive(Copy)]
   pub struct CK_FUNCTION_LIST {
     pub version: CK_VERSION,
     pub C_Initialize: Option<C_Initialize>,
@@ -1475,6 +1402,11 @@ cryptoki_aligned! {
     pub C_GetFunctionStatus: Option<C_GetFunctionStatus>,
     pub C_CancelFunction: Option<C_CancelFunction>,
     pub C_WaitForSlotEvent: Option<C_WaitForSlotEvent>,
+  }
+}
+impl fmt::Debug for CK_FUNCTION_LIST {
+  fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    write!(fmt, "CK_FUNCTION_LIST")
   }
 }
 packed_clone!(CK_FUNCTION_LIST);
