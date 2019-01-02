@@ -155,7 +155,7 @@ pub struct Ctx {
 }
 
 impl Ctx {
-  pub fn new(filename: &'static str) -> Result<Ctx, Error> {
+  pub fn new(filename: &str) -> Result<Ctx, Error> {
     unsafe {
       let lib = libloading::Library::new(filename)?;
       let mut list: CK_FUNCTION_LIST_PTR = mem::uninitialized();
@@ -244,7 +244,7 @@ impl Ctx {
     }
   }
 
-  pub fn new_and_initialize(filename: &'static str) -> Result<Ctx, Error> {
+  pub fn new_and_initialize(filename: &str) -> Result<Ctx, Error> {
     let mut ctx = Ctx::new(filename)?;
     ctx.initialize(None)?;
     Ok(ctx)
